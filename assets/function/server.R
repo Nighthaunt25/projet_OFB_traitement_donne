@@ -33,24 +33,19 @@ server <- function(input, output) {
 output$map_france <- renderLeaflet({
   data <- stations_dept()
   
-  # On crée la base de la carte
   m <- leaflet() %>% addTiles()
   
   if (!is.null(data) && nrow(data) > 0) {
-    # PAS DE BOUCLE FOR : on donne directement les colonnes à leaflet
     m <- m %>% addCircleMarkers(
-      # Utilise longitude/latitude (WGS84) au lieu de x/y (Lambert)
       lng = as.numeric(data$longitude_station), 
       lat = as.numeric(data$latitude_station),
       radius = 5, 
       color = "blue", 
       fillOpacity = 0.7,
-      # Leaflet va créer un popup différent pour chaque ligne du tableau
       popup = paste("Station :", data$libelle_station)
     )
   }
   
-  # On renvoie la carte finale avec TOUS les points
   m
 })
 # 
