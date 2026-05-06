@@ -40,7 +40,9 @@ output$map_france <- renderLeaflet({
       lng = as.numeric(data$longitude_station), 
       lat = as.numeric(data$latitude_station),
       radius = 5, 
-      color = "blue", 
+      if (1=1) {
+         color = "blue", 
+      }
       fillOpacity = 0.7,
       popup = paste("Station :", data$libelle_station)
     )
