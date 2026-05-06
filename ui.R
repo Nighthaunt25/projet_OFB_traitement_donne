@@ -7,7 +7,6 @@ ui <- fluidPage(
   
   sidebarLayout(
     sidebarPanel(
-      selectInput
       selectInput("dept", "Choisir un département :",
                   choices = setNames(sprintf("%02d", 1:95), sprintf("Département %02d", 1:95)),
                   selected = "1"),
