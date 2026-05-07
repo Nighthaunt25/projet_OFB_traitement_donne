@@ -69,3 +69,18 @@ output$map_france <- renderLeaflet({
   ggplotly(p)
 })
 }
+
+#df_seuil <- data.frame()
+#stations_ciblees <- unique(q_jr_totaux_def$code_station)
+#for (i in 1:length(stations_ciblees)) {
+
+  #q_jr_totaux_sub <- q_jr_totaux_def %>% 
+   # filter(code_station== stations_ciblees[i])
+  
+  #seuil <-calcul_1seuil_sech_v2(q_jr_totaux_sub$resultat_obs_elab, 0.95)
+  
+  #df_seuil <- rbind(df_seuil, seuil)
+  
+  
+#}
+#df_seuil <-cbind(df_seuil, stations_ciblees)  
