@@ -157,7 +157,7 @@ VCNx_1sta <- function (vecteur_debits_spe, vecteur_dates, jours_glissants, code_
     series   <- series_brutes()
     stations <- stations_dept()
     req(series)
-
+ 
     resultats <- map2(series, seq_along(series), function(df, i) {
 
       if (is.null(df) || !is.data.frame(df) || nrow(df) == 0) return(NULL)
@@ -211,7 +211,7 @@ VCNx_1sta <- function (vecteur_debits_spe, vecteur_dates, jours_glissants, code_
       tryCatch(VCN3_1sta(debits, dates, 3, stations$code_station[i]), error = function(e) NULL)
     })
 
-    # Mise en forme avec surface BV pour les deux indicateurs
+    # mise en forme avec surface BV pour les deux indicateurs
     df_vcn10 <- bind_rows(tous_vcn10) %>%
       left_join(surface %>% select(code_station, surface_bv), by = c("code_sta" = "code_station")) %>%
       mutate(spe = VCNx_annuel_spe / surface_bv) %>%
@@ -228,7 +228,6 @@ VCNx_1sta <- function (vecteur_debits_spe, vecteur_dates, jours_glissants, code_
 
     validate(need(nrow(df_vcn10) > 0, "Aucune donnée trouvée."))
 
-    # Tendances linéaires
     df_vcn10$tendance <- predict(lm(mediane ~ annee, data = df_vcn10))
     df_vcn3$tendance  <- predict(lm(mediane ~ annee, data = df_vcn3))
 
