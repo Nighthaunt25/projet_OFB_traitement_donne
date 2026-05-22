@@ -20,7 +20,7 @@ ui <- fluidPage(
       tabsetPanel(id = "tabs",
         tabPanel("Carte des Stations", leafletOutput("map_france")),
         tabPanel("Q90/Q50", DTOutput("q90"),),
-        tabPanel("VCN10", plotlyOutput("vcn10"),)
+        tabPanel("VCN10/VCN3", plotlyOutput("vcn", height = "400px"),)
       )
     )
   )
