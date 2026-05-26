@@ -29,6 +29,7 @@ server <- function(input, output) {
     data <- stations_dept()
 
     m <- leaflet() %>% addTiles()
+    j <- leaflet() %>% addTiles()
 
     if (!is.null(data) && nrow(data) > 0) {
       m <- m %>% addCircleMarkers(
@@ -39,9 +40,18 @@ server <- function(input, output) {
         fillOpacity = 0.7,
         popup       = paste("Station :", data$libelle_station)
       )
+      j <- j %>% addCircleMarkers(
+        lng         = as.numeric(data$longitude_station),
+        lat         = as.numeric(data$latitude_station),
+        radius      = 5,
+        color       = "blue",
+        fillOpacity = 0.7,
+        popup       = paste("Station :", data$libelle_station)
+      )
     }
 
     m
+    j
   })
 
   VCN3_1sta <- function (vecteur_debits_spe, vecteur_dates, jours_glissants_2, code_station) {
@@ -266,7 +276,7 @@ VCNx_1sta <- function (vecteur_debits_spe, vecteur_dates, jours_glissants, code_
 
 output$tendances_q90 <- renderDT({ 
     series   <- series_brutes()
-    seuils   <- seuils_stations()   # ← Q90 déjà calculés, pas besoin de recalculer
+    seuils   <- seuils_stations()   
     stations <- stations_dept()
     req(series, seuils)
  
@@ -298,34 +308,130 @@ output$tendances_q90 <- renderDT({
       if (nrow(df) < 30) return(NULL)
       if (median(df$debit) > 1800) df$debit <- df$debit / 1000
  
-      # Nombre de jours sous le Q90 par année (durée de sécheresse annuelle)
-      duree_sech <- df %>%
+      # 1. Calcul pour le Q90 (Sécheresse)
+      duree_q90 <- df %>%
         group_by(annee) %>%
         summarise(duree = sum(debit < s$q90), .groups = "drop") %>%
         arrange(annee)
+      res_q90 <- tester_mk(duree_q90$duree)
  
-      res <- tester_mk(duree_sech$duree)
-      if (is.null(res)) return(NULL)
+      # 2. Calcul pour le Q50 (Médiane)
+      duree_q50 <- df %>%
+        group_by(annee) %>%
+        summarise(duree = sum(debit < s$q50), .groups = "drop") %>%
+        arrange(annee)
+      res_q50 <- tester_mk(duree_q50$duree)
+ 
+      if (is.null(res_q90) || is.null(res_q50)) return(NULL)
  
       data.frame(
-        `Nom de la station` = stations$libelle_station[i],
-        `Code station`      = code,
-        `P-value`           = round(res$mk$p.value, 10),
-        `Sens de la pente`  = round(res$slope$estimates, 5),   # jours/an
-        `Tendance`          = interpreter(res),
+        `Nom de la station`   = stations$libelle_station[i],
+        `Code station`        = code,
+        
+        # Colonnes Q50
+        `P-value Q50`         = round(res_q50$mk$p.value, 10),
+        `Pente Q50 (j/an)`    = round(res_q50$slope$estimates, 5),
+        `Tendance Q50`        = interpreter(res_q50),
+        
+        # Colonnes Q90
+        `P-value Q90`         = round(res_q90$mk$p.value, 10),
+        `Pente Q90 (j/an)`    = round(res_q90$slope$estimates, 5),
+        `Tendance Q90`        = interpreter(res_q90),
+        
         check.names = FALSE
       )
     })
  
-    tableau <- bind_rows(resultats) %>%
-      arrange(factor(Tendance, levels = c("Dégradation", "Pas de tendance", "Amélioration")))
- 
+    tableau <- bind_rows(resultats)
     validate(need(nrow(tableau) > 0, "Aucune donnée trouvée."))
  
     couleurs <- c("Dégradation" = "#ffcdd2", "Pas de tendance" = "#fff9c4", "Amélioration" = "#c8e6c9")
  
     datatable(tableau, rownames = FALSE) %>%
-      formatStyle("Tendance", backgroundColor = styleEqual(names(couleurs), couleurs))
-  })
+      formatStyle("Tendance Q50", backgroundColor = styleEqual(names(couleurs), couleurs)) %>%
+      formatStyle("Tendance Q90", backgroundColor = styleEqual(names(couleurs), couleurs))
+})
+
+  output$tendvcn <- renderDT({
+    series   <- series_brutes()
+    seuils   <- seuils_stations()
+    stations <- stations_dept()
+    surface  <- surface_bv_data() 
+    req(series, seuils, surface)
+
+    tester_mk <- function(valeurs) {
+      if (length(valeurs) < 4) return(NULL)
+      tryCatch(
+        list(mk = mk.test(valeurs), slope = sens.slope(valeurs)),
+        error = function(e) NULL
+      )
+    }
+
+    interpreter <- function(res) {
+      if (is.na(res$mk$p.value) || res$mk$p.value > 0.05 || res$slope$estimates == 0) return("Pas de tendance")
+      if (res$slope$estimates < 0) return("Dégradation")
+      return("Amélioration")
+    }
+
+    resultats <- map2(series, seq_along(series), function(df, i) {
+      if (is.null(df) || !is.data.frame(df) || nrow(df) == 0) return(NULL)
+
+      code <- stations$code_station[i]
+      s    <- seuils[[code]]
+      if (is.null(s)) return(NULL)
+
+      surf_station <- surface %>% filter(code_station == code) %>% pull(surface_bv)
+      if (length(surf_station) == 0 || is.na(surf_station) || surf_station <= 0) return(NULL)
+
+      debits <- as.numeric(df$resultat_obs_elab)
+      dates  <- as.Date(df$date_obs_elab)
+      valides <- !is.na(debits) & debits >= 0 & !is.na(dates)
+      debits <- debits[valides] ; dates <- dates[valides]
+      if (length(debits) < 30) return(NULL)
+      
+      if (median(debits) > 1800) debits <- debits / 1000
+
+      # Calcul VCN10 et VCN3
+      vcn10 <- tryCatch(VCNx_1sta(debits, dates, 10, code), error = function(e) NULL)
+      vcn3  <- tryCatch(VCN3_1sta(debits, dates, 3, code), error = function(e) NULL)
+      
+      if (is.null(vcn10) || is.null(vcn3) || nrow(vcn10) < 4) return(NULL)
+
+      # Calcul des débits spécifiques réels
+      vcn10 <- vcn10 %>% mutate(VCNx_spe_reel = VCNx_annuel_spe / surf_station)
+      vcn3  <- vcn3 %>% mutate(VCN3_spe_reel = VCN3_annuel_spe / surf_station)
+
+      # Exécution des tests statistiques
+      res10 <- tester_mk(vcn10$VCNx_spe_reel)
+      res3  <- tester_mk(vcn3$VCN3_spe_reel)
+      if (is.null(res10) || is.null(res3)) return(NULL)
+
+      data.frame(
+        `Nom de la station`  = stations$libelle_station[i],
+        `Code station`       = code,
+        
+        # Métriques VCN3
+        `P-value VCN3`       = round(res3$mk$p.value, 10),
+        `Pente VCN3`         = round(res3$slope$estimates, 5),
+        `Tendance VCN3`      = interpreter(res3),
+        
+        # Métriques VCN10
+        `P-value VCN10`      = round(res10$mk$p.value, 10),
+        `Pente VCN10`        = round(res10$slope$estimates, 5),
+        `Tendance VCN10`     = interpreter(res10),
+        
+        check.names = FALSE
+      )
+    })
+
+    tableau <- bind_rows(resultats)
+    validate(need(nrow(tableau) > 0, "Aucune donnée trouvée."))
+
+    couleurs <- c("Dégradation" = "#ffcdd2", "Pas de tendance" = "#fff9c4", "Amélioration" = "#c8e6c9")
+
+    datatable(tableau, rownames = FALSE) %>%
+      formatStyle("Tendance VCN3", backgroundColor = styleEqual(names(couleurs), couleurs)) %>%
+      formatStyle("Tendance VCN10", backgroundColor = styleEqual(names(couleurs), couleurs))
+})
 
 }
