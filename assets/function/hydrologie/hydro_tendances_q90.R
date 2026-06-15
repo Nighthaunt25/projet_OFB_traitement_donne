@@ -104,7 +104,11 @@ hydro_tendances_q90_server <- function(input, output, stations_dept, series_brut
         colors   = c("red", "orange", "green"),
         labels   = c("Dégradation", "Pas de tendance", "Amélioration"),
         title    = "Tendance Q90"
-      )
+      )%>%
+      addControl(
+      html     = "<h4 style='margin:0; padding:5px; background:white; border-radius:4px; box-shadow: 0 0 5px rgba(0,0,0,0.2);'>Carte des tendances sécheresse (Q90)</h4>",
+      position = "topright" # Position de ton choix : topright, topleft, bottomright, bottomleft
+    )
   })
 
   observeEvent(tendances_q90_calculees(), {
@@ -133,7 +137,11 @@ hydro_tendances_q90_server <- function(input, output, stations_dept, series_brut
         colors   = c("red", "orange", "green"),
         labels   = c("Dégradation", "Pas de tendance", "Amélioration"),
         title    = "Tendance Q90"
-      )
+      )%>%
+      addControl(
+      html     = "<h4 style='margin:0; padding:5px; background:white; border-radius:4px; box-shadow: 0 0 5px rgba(0,0,0,0.2);'>Carte des tendances sécheresse (Q90)</h4>",
+      position = "topright" # Position de ton choix : topright, topleft, bottomright, bottomleft
+    )
   })
 
 
