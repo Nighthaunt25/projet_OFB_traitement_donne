@@ -1,0 +1,10 @@
+name: mon_app_shiny
+title:
+username: hydrotrend
+account: hydrotrend
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 17510760
+bundleId: 12129689
+url: https://hydrotrend.shinyapps.io/mon_app_shiny/
+version: 1

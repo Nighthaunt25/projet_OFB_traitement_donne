@@ -15,7 +15,7 @@ ui <- fluidPage(
 
   div(
     class = "header-bar",
-    h1(class = "TitreAppli", "HydroTrends — Analyse des milieux aquatiques")
+    h1(class = "TitreAppli", "HydroTrends : Analyse des tendances des milieux aquatiques")
   ),
 
   tags$img(
